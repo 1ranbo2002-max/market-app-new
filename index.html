@@ -637,4 +637,74 @@ async function startQrCamera(){
 }
 function stopQrCamera(){qrScanActive=false;if(qrScanTimer)clearTimeout(qrScanTimer);qrScanTimer=null;if(qrCameraStream){qrCameraStream.getTracks().forEach(t=>t.stop());qrCameraStream=null;}const v=document.getElementById('qrPaymentVideo');if(v){v.pause();v.srcObject=null;v.style.display='none';}}
 
+</script><section id="merchantQrBox" style="background:white;padding:16px;margin:15px;border-radius:12px;text-align:center">
+<h3>رمز QR الخاص بالتاجر</h3>
+
+<select id="merchantQrProvider">
+<option value="">اختر شركة الدفع</option>
+<option>Jawwal Pay</option>
+<option>PalPay</option>
+<option>بنك فلسطين</option>
+<option>بنك القدس</option>
+<option>مال شات</option>
+</select>
+
+<input type="file" id="merchantQrFile" accept="image/*">
+
+<div id="merchantQrPreview"></div>
+
+<button type="button" onclick="saveMerchantQr()">حفظ الرمز</button>
+<button type="button" onclick="deleteMerchantQr()">حذف الرمز</button>
+</section>
+
+<script>
+const merchantQrKey = 'market_merchant_qr_v1';
+
+function saveMerchantQr() {
+ const provider = document.getElementById('merchantQrProvider').value;
+ const file = document.getElementById('merchantQrFile').files[0];
+
+ if (!provider || !file) {
+  alert('اختر شركة الدفع وصورة الرمز');
+  return;
+ }
+
+ const reader = new FileReader();
+
+ reader.onload = function() {
+  try {
+   localStorage.setItem(merchantQrKey, JSON.stringify({
+    provider: provider,
+    image: reader.result
+   }));
+   showMerchantQr();
+   alert('تم حفظ الرمز');
+  } catch(e) {
+   alert('الصورة كبيرة، اختر صورة أصغر');
+  }
+ };
+
+ reader.readAsDataURL(file);
+}
+
+function showMerchantQr() {
+ const saved = localStorage.getItem(merchantQrKey);
+ if (!saved) return;
+
+ const data = JSON.parse(saved);
+
+ document.getElementById('merchantQrProvider').value = data.provider;
+ document.getElementById('merchantQrPreview').innerHTML =
+  '<p>' + data.provider + '</p><img src="' + data.image + '" style="width:220px;max-width:100%">';
+}
+
+function deleteMerchantQr() {
+ localStorage.removeItem(merchantQrKey);
+ document.getElementById('merchantQrPreview').innerHTML = '';
+ document.getElementById('merchantQrProvider').value = '';
+ document.getElementById('merchantQrFile').value = '';
+ alert('تم حذف الرمز');
+}
+
+showMerchantQr();
 </script></body></html>
