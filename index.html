@@ -773,4 +773,145 @@ function stopQrCamera(){qrScanActive=false;if(qrScanTimer)clearTimeout(qrScanTim
   load();
 })();
 </script>
-</body></html>
+<section id="marketQrPayment" style="margin:15px;padding:16px;background:white;border-radius:14px;text-align:center;color:#222">
+  <h3>الدفع الإلكتروني QR</h3>
+
+  <input id="marketQrAmount" type="number" min="0.01" step="0.01"
+    placeholder="المبلغ المطلوب بالشيكل"
+    style="width:100%;padding:12px;box-sizing:border-box;margin:8px 0">
+
+  <select id="marketQrMethod" style="width:100%;padding:12px;margin:8px 0">
+    <option value="merchant">QR التاجر – الزبون يمسح الرمز</option>
+    <option value="customer">QR الزبون – التاجر يمسح الرمز</option>
+  </select>
+
+  <select id="marketQrCompany" style="width:100%;padding:12px;margin:8px 0">
+    <option value="">اختر شركة الدفع</option>
+    <option>Jawwal Pay</option>
+    <option>PalPay</option>
+    <option>بنك فلسطين</option>
+    <option>بنك القدس</option>
+    <option>مال شات</option>
+  </select>
+
+  <div id="marketQrMerchantArea" style="display:none;margin:12px 0">
+    <p>امسح الرمز من محفظة التاجر</p>
+    <img id="marketQrMerchantImage" style="width:100%;max-width:300px;object-fit:contain">
+  </div>
+
+  <div id="marketQrCustomerArea" style="display:none;margin:12px 0">
+    <p>اجعل الزبون يعرض رمز الدفع من محفظته، ثم امسحه بكاميرا المحفظة أو جهاز الدفع المعتمد.</p>
+    <p>هذا الخيار لا يشغّل ماسحًا جديدًا ولا يؤكد الدفع بمجرد عرض الرمز.</p>
+  </div>
+
+  <button type="button" onclick="marketQrStartPayment()"
+    style="padding:12px;background:#123a32;color:white;border:0;border-radius:8px;width:100%">
+    متابعة الدفع
+  </button>
+
+  <div id="marketQrConfirmArea" style="display:none;margin-top:15px">
+    <p id="marketQrConfirmText"></p>
+    <button type="button" onclick="marketQrConfirmPayment()"
+      style="padding:12px;background:#16803c;color:white;border:0;border-radius:8px;width:100%">
+      تأكيد استلام المبلغ
+    </button>
+  </div>
+
+  <p id="marketQrStatus" style="margin-top:12px"></p>
+</section>
+
+<script>
+(function(){
+  const key = 'market_merchant_qr_v2';
+
+  window.marketQrStartPayment = function(){
+    const amount = Number(document.getElementById('marketQrAmount').value);
+    const method = document.getElementById('marketQrMethod').value;
+    const company = document.getElementById('marketQrCompany').value;
+    const status = document.getElementById('marketQrStatus');
+    const merchant = document.getElementById('marketQrMerchantArea');
+    const customer = document.getElementById('marketQrCustomerArea');
+    const confirmArea = document.getElementById('marketQrConfirmArea');
+
+    confirmArea.style.display = 'none';
+    merchant.style.display = 'none';
+    customer.style.display = 'none';
+
+    if(!amount || amount <= 0){
+      alert('أدخل مبلغًا صحيحًا');
+      return;
+    }
+
+    if(!company){
+      alert('اختر شركة الدفع');
+      return;
+    }
+
+    if(method === 'merchant'){
+      let saved;
+      try {
+        saved = JSON.parse(localStorage.getItem(key));
+      } catch(e) {}
+
+      if(!saved || !saved.image){
+        alert('يجب حفظ QR التاجر أولًا من إعداد QR التاجر');
+        return;
+      }
+
+      if(saved.provider !== company){
+        alert('شركة الدفع المختارة لا تطابق شركة QR المحفوظ');
+        return;
+      }
+
+      document.getElementById('marketQrMerchantImage').src = saved.image;
+      merchant.style.display = 'block';
+    } else {
+      customer.style.display = 'block';
+    }
+
+    document.getElementById('marketQrConfirmText').textContent =
+      'بعد التأكد من وصول ' + amount.toFixed(2) +
+      ' شيكل إلى محفظتك عبر ' + company +
+      ' يمكنك تأكيد الاستلام.';
+
+    confirmArea.style.display = 'block';
+    status.textContent = 'بانتظار التحقق من وصول المبلغ إلى محفظتك.';
+  };
+
+  window.marketQrConfirmPayment = function(){
+    const amount = Number(document.getElementById('marketQrAmount').value);
+    const company = document.getElementById('marketQrCompany').value;
+
+    if(!amount || amount <= 0 || !company) return;
+
+    if(!confirm('هل تحققت بنفسك من وصول مبلغ ' +
+      amount.toFixed(2) + ' شيكل إلى محفظتك؟')) return;
+
+    const record = {
+      amount: amount,
+      company: company,
+      date: new Date().toLocaleString('ar'),
+      status: 'تم التأكيد يدويًا'
+    };
+
+    let records = [];
+    try {
+      records = JSON.parse(localStorage.getItem('market_qr_payment_records') || '[]');
+    } catch(e) {}
+
+    records.push(record);
+
+    try {
+      localStorage.setItem('market_qr_payment_records', JSON.stringify(records));
+    } catch(e) {
+      alert('تعذر تسجيل العملية في الجهاز');
+      return;
+    }
+
+    document.getElementById('marketQrStatus').textContent =
+      'تم تسجيل تأكيد استلام ' + amount.toFixed(2) + ' شيكل.';
+
+    document.getElementById('marketQrConfirmArea').style.display = 'none';
+  };
+})();
+</script></body></html>
