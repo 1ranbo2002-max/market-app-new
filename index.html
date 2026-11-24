@@ -637,74 +637,140 @@ async function startQrCamera(){
 }
 function stopQrCamera(){qrScanActive=false;if(qrScanTimer)clearTimeout(qrScanTimer);qrScanTimer=null;if(qrCameraStream){qrCameraStream.getTracks().forEach(t=>t.stop());qrCameraStream=null;}const v=document.getElementById('qrPaymentVideo');if(v){v.pause();v.srcObject=null;v.style.display='none';}}
 
-</script><section id="merchantQrBox" style="background:white;padding:16px;margin:15px;border-radius:12px;text-align:center">
-<h3>رمز QR الخاص بالتاجر</h3>
+</script><section id="marketMerchantQrBox" style="background:white;padding:16px;margin:15px;border-radius:14px;text-align:center;color:#222">
+  <h3>إعداد QR التاجر</h3>
 
-<select id="merchantQrProvider">
-<option value="">اختر شركة الدفع</option>
-<option>Jawwal Pay</option>
-<option>PalPay</option>
-<option>بنك فلسطين</option>
-<option>بنك القدس</option>
-<option>مال شات</option>
-</select>
+  <select id="marketMerchantQrProvider" style="width:100%;padding:12px;margin:8px 0">
+    <option value="">اختر شركة الدفع</option>
+    <option value="Jawwal Pay">Jawwal Pay</option>
+    <option value="PalPay">PalPay</option>
+    <option value="بنك فلسطين">بنك فلسطين</option>
+    <option value="بنك القدس">بنك القدس</option>
+    <option value="مال شات">مال شات</option>
+  </select>
 
-<input type="file" id="merchantQrFile" accept="image/*">
+  <input id="marketMerchantQrFile" type="file" accept="image/*" style="width:100%;margin:10px 0">
 
-<div id="merchantQrPreview"></div>
+  <div id="marketMerchantQrPreview" style="margin:12px"></div>
 
-<button type="button" onclick="saveMerchantQr()">حفظ الرمز</button>
-<button type="button" onclick="deleteMerchantQr()">حذف الرمز</button>
+  <button type="button" onclick="marketMerchantQrSave()" style="padding:12px;background:#123a32;color:white;border:0;border-radius:8px">
+    حفظ QR التاجر
+  </button>
+
+  <button type="button" onclick="marketMerchantQrShowCustomer()" style="padding:12px;background:#087bce;color:white;border:0;border-radius:8px;margin:5px">
+    عرض QR للزبون
+  </button>
+
+  <button type="button" onclick="marketMerchantQrDelete()" style="padding:10px;background:#b42318;color:white;border:0;border-radius:8px">
+    حذف QR
+  </button>
 </section>
 
+<div id="marketMerchantQrCustomer" style="display:none;position:fixed;inset:0;background:white;z-index:999999;text-align:center;padding:20px;overflow:auto">
+  <h2>امسح رمز QR للدفع</h2>
+  <p id="marketMerchantQrCustomerProvider" style="font-size:20px;font-weight:bold"></p>
+  <img id="marketMerchantQrCustomerImage" style="width:100%;max-width:400px;max-height:65vh;object-fit:contain">
+  <p>افتح تطبيق المحفظة واختر مسح QR لإتمام الدفع.</p>
+  <button type="button" onclick="marketMerchantQrCloseCustomer()" style="padding:14px 30px;background:#123a32;color:white;border:0;border-radius:10px">
+    إغلاق
+  </button>
+</div>
+
 <script>
-const merchantQrKey = 'market_merchant_qr_v1';
+(function(){
+  const key = 'market_merchant_qr_v2';
 
-function saveMerchantQr() {
- const provider = document.getElementById('merchantQrProvider').value;
- const file = document.getElementById('merchantQrFile').files[0];
+  const provider = document.getElementById('marketMerchantQrProvider');
+  const fileInput = document.getElementById('marketMerchantQrFile');
+  const preview = document.getElementById('marketMerchantQrPreview');
 
- if (!provider || !file) {
-  alert('اختر شركة الدفع وصورة الرمز');
-  return;
- }
-
- const reader = new FileReader();
-
- reader.onload = function() {
-  try {
-   localStorage.setItem(merchantQrKey, JSON.stringify({
-    provider: provider,
-    image: reader.result
-   }));
-   showMerchantQr();
-   alert('تم حفظ الرمز');
-  } catch(e) {
-   alert('الصورة كبيرة، اختر صورة أصغر');
+  function load(){
+    try {
+      const saved = localStorage.getItem(key);
+      if(!saved) return;
+      const data = JSON.parse(saved);
+      provider.value = data.provider;
+      preview.innerHTML = '';
+      const title = document.createElement('p');
+      title.textContent = 'الرمز المحفوظ: ' + data.provider;
+      const img = document.createElement('img');
+      img.src = data.image;
+      img.style.cssText = 'width:180px;max-width:100%;object-fit:contain';
+      preview.append(title,img);
+    } catch(e) {
+      alert('تعذر قراءة الرمز المحفوظ');
+    }
   }
- };
 
- reader.readAsDataURL(file);
-}
+  window.marketMerchantQrSave = function(){
+    const selected = provider.value;
+    const file = fileInput.files[0];
 
-function showMerchantQr() {
- const saved = localStorage.getItem(merchantQrKey);
- if (!saved) return;
+    if(!selected){
+      alert('اختر شركة الدفع أولاً');
+      return;
+    }
 
- const data = JSON.parse(saved);
+    if(!file){
+      alert('اختر صورة QR أولاً');
+      return;
+    }
 
- document.getElementById('merchantQrProvider').value = data.provider;
- document.getElementById('merchantQrPreview').innerHTML =
-  '<p>' + data.provider + '</p><img src="' + data.image + '" style="width:220px;max-width:100%">';
-}
+    if(!file.type.startsWith('image/')){
+      alert('الملف يجب أن يكون صورة');
+      return;
+    }
 
-function deleteMerchantQr() {
- localStorage.removeItem(merchantQrKey);
- document.getElementById('merchantQrPreview').innerHTML = '';
- document.getElementById('merchantQrProvider').value = '';
- document.getElementById('merchantQrFile').value = '';
- alert('تم حذف الرمز');
-}
+    if(file.size > 2 * 1024 * 1024){
+      alert('حجم الصورة أكبر من 2 ميجابايت. اختر صورة أصغر');
+      return;
+    }
 
-showMerchantQr();
-</script></body></html>
+    const reader = new FileReader();
+
+    reader.onload = function(){
+      try {
+        localStorage.setItem(key, JSON.stringify({
+          provider:selected,
+          image:reader.result
+        }));
+        load();
+        alert('تم حفظ QR التاجر بنجاح');
+      } catch(e) {
+        alert('تعذر الحفظ. اختر صورة أصغر');
+      }
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  window.marketMerchantQrShowCustomer = function(){
+    const saved = localStorage.getItem(key);
+    if(!saved){
+      alert('احفظ QR التاجر أولاً');
+      return;
+    }
+
+    const data = JSON.parse(saved);
+    document.getElementById('marketMerchantQrCustomerProvider').textContent = data.provider;
+    document.getElementById('marketMerchantQrCustomerImage').src = data.image;
+    document.getElementById('marketMerchantQrCustomer').style.display = 'block';
+  };
+
+  window.marketMerchantQrCloseCustomer = function(){
+    document.getElementById('marketMerchantQrCustomer').style.display = 'none';
+  };
+
+  window.marketMerchantQrDelete = function(){
+    if(!confirm('هل تريد حذف QR التاجر؟')) return;
+    localStorage.removeItem(key);
+    provider.value = '';
+    fileInput.value = '';
+    preview.innerHTML = '';
+    alert('تم حذف QR التاجر');
+  };
+
+  load();
+})();
+</script>
+</body></html>
